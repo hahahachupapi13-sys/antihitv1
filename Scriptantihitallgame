@@ -1,0 +1,136 @@
+-- AntiHitClient (LocalScript)
+-- Dán vào StarterGui dưới dạng LocalScript (hoặc đổi tên tùy ý)
+-- Script tự tạo 1 ScreenGui màu tím và điều khiển toggle AntiHit bằng RemoteEvent "AntiHitEvent"
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local event = ReplicatedStorage:WaitForChild("AntiHitEvent") -- đảm bảo RemoteEvent tồn tại
+
+-- Tạo ScreenGui và đặt ResetOnSpawn = false để giữ GUI qua respawn
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AntiHitGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- MAIN FRAME (purple)
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.AnchorPoint = Vector2.new(0,0)
+mainFrame.Position = UDim2.new(0.02, 0, 0.02, 0)
+mainFrame.Size = UDim2.new(0, 250, 0, 70)
+mainFrame.BackgroundColor3 = Color3.fromRGB(45, 20, 80) -- deep purple
+mainFrame.BackgroundTransparency = 0
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+mainFrame.Active = true
+mainFrame.Draggable = true
+
+-- Toggle Menu Button (top-left small)
+local toggleMenuButton = Instance.new("TextButton")
+toggleMenuButton.Name = "ToggleMenuButton"
+toggleMenuButton.Size = UDim2.new(0, 30, 0, 30)
+toggleMenuButton.Position = UDim2.new(0, 0, 0, 0)
+toggleMenuButton.BackgroundColor3 = Color3.fromRGB(100, 60, 160)
+toggleMenuButton.Text = "≡"
+toggleMenuButton.Font = Enum.Font.Ubuntu
+toggleMenuButton.TextSize = 20
+toggleMenuButton.TextColor3 = Color3.new(1,1,1)
+toggleMenuButton.Parent = mainFrame
+
+-- Title
+local title = Instance.new("TextLabel")
+title.Name = "Title"
+title.Size = UDim2.new(1, -40, 0, 30)
+title.Position = UDim2.new(0, 40, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "Anti Hit Menu"
+title.TextColor3 = Color3.fromRGB(230, 220, 255)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 16
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = mainFrame
+
+-- Menu Frame (container for toggles)
+local menuFrame = Instance.new("Frame")
+menuFrame.Name = "MenuFrame"
+menuFrame.Size = UDim2.new(1, 0, 0, 40)
+menuFrame.Position = UDim2.new(0, 0, 0, 30)
+menuFrame.BackgroundTransparency = 1
+menuFrame.Parent = mainFrame
+
+-- AntiHit Toggle Button
+local antiHitButton = Instance.new("TextButton")
+antiHitButton.Name = "AntiHitToggle"
+antiHitButton.Size = UDim2.new(0.6, 0, 0, 30)
+antiHitButton.Position = UDim2.new(0.02, 0, 0, 5)
+antiHitButton.BackgroundColor3 = Color3.fromRGB(80, 40, 140)
+antiHitButton.BorderSizePixel = 0
+antiHitButton.TextColor3 = Color3.fromRGB(255,255,255)
+antiHitButton.Font = Enum.Font.Gotham
+antiHitButton.TextSize = 14
+antiHitButton.Parent = menuFrame
+
+-- Small status label to right
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Name = "StatusLabel"
+statusLabel.Size = UDim2.new(0.35, -8, 0, 30)
+statusLabel.Position = UDim2.new(0.63, 0, 0, 5)
+statusLabel.BackgroundTransparency = 0
+statusLabel.BackgroundColor3 = Color3.fromRGB(55, 20, 95)
+statusLabel.TextColor3 = Color3.fromRGB(220,220,255)
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextSize = 14
+statusLabel.Parent = menuFrame
+
+-- Helper function cập nhật UI
+local function updateUI(enabled)
+    antiHitButton.Text = (enabled and "Anti Hit: ON") or "Anti Hit: OFF"
+    antiHitButton.BackgroundColor3 = (enabled and Color3.fromRGB(140, 80, 200)) or Color3.fromRGB(80,80,80)
+    statusLabel.Text = (enabled and "Đang bật") or "Tắt"
+end
+
+-- Toggle menu show/hide với tween
+local menuVisible = true
+local function setMenuVisible(visible)
+    menuVisible = visible
+    local goalSize = visible and UDim2.new(0, 250, 0, 70) or UDim2.new(0, 60, 0, 30)
+    TweenService:Create(mainFrame, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {Size = goalSize}):Play()
+    antiHitButton.Visible = visible
+    statusLabel.Visible = visible
+    title.Visible = visible
+end
+
+toggleMenuButton.MouseButton1Click:Connect(function()
+    setMenuVisible(not menuVisible)
+end)
+
+-- Khi ấn toggle anti hit: gửi yêu cầu lên server và cập nhật attribute local
+antiHitButton.MouseButton1Click:Connect(function()
+    local cur = player:GetAttribute("AntiHit")
+    if cur == nil then cur = false end
+    local new = not cur
+    -- Gửi yêu cầu lên server
+    event:FireServer(new)
+    -- Cập nhật attribute local để UI phản hồi ngay
+    player:SetAttribute("AntiHit", new)
+    updateUI(new)
+end)
+
+-- Nếu attribute thay đổi (server hoặc local), cập nhật UI
+player:GetAttributeChangedSignal("AntiHit"):Connect(function()
+    local cur = player:GetAttribute("AntiHit")
+    if cur == nil then cur = false end
+    updateUI(cur)
+end)
+
+-- Khởi tạo attribute nếu chưa có và cập nhật UI lần đầu
+if player:GetAttribute("AntiHit") == nil then
+    player:SetAttribute("AntiHit", false)
+end
+updateUI(player:GetAttribute("AntiHit"))
+
+-- Fade-in nhẹ khi vừa tạo GUI
+mainFrame.BackgroundTransparency = 1
+TweenService:Create(mainFrame, TweenInfo.new(0.25), {BackgroundTransparency = 0}):Play()
