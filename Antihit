@@ -1,0 +1,119 @@
+-- Tạo LocalScript và đặt vào StarterScripts
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Tạo GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AntiHitGui"
+ScreenGui.Parent = game.CoreGui
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 200, 0, 150)
+Frame.Position = UDim2.new(0.5, -100, 0.5, -75)
+Frame.BackgroundColor3 = Color3.new(0.5, 0, 0.5) -- Màu tím
+Frame.Parent = ScreenGui
+
+local TextLabel = Instance.new("TextLabel")
+TextLabel.Size = UDim2.new(1, 0, 0.2, 0)
+TextLabel.Text = "Anti Hit"
+TextLabel.Parent = Frame
+
+local TextButton = Instance.new("TextButton")
+TextButton.Size = UDim2.new(1, 0, 0.2, 0)
+TextButton.Position = UDim2.new(0, 0, 0.2, 0)
+TextButton.Text = "Bật"
+TextButton.Parent = Frame
+
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(1, 0, 0.2, 0)
+ToggleButton.Position = UDim2.new(0, 0, 0.4, 0)
+ToggleButton.Text = "Ẩn Menu"
+ToggleButton.Parent = Frame
+
+local AntiHitLabel = Instance.new("TextLabel")
+AntiHitLabel.Size = UDim2.new(1, 0, 0.2, 0)
+AntiHitLabel.Position = UDim2.new(0, 0, 0.6, 0)
+AntiHitLabel.Text = "Trạng thái: Tắt"
+AntiHitLabel.Parent = Frame
+
+local antiHit = false
+
+-- Lưu trạng thái anti hit
+local function saveAntiHit()
+    game:GetService("StarterGui"):SetCore("SaveAntiHit", antiHit)
+end
+
+-- Tải trạng thái anti hit
+local function loadAntiHit()
+    local savedAntiHit = game:GetService("StarterGui"):GetCore("SaveAntiHit")
+    if savedAntiHit ~= nil then
+        antiHit = savedAntiHit
+        if antiHit then
+            TextButton.Text = "Tắt"
+            AntiHitLabel.Text = "Trạng thái: Bật"
+        end
+    end
+end
+
+loadAntiHit()
+
+-- Chống va chạm
+local function onCharacterAdded(character)
+    humanoid = character:WaitForChild("Humanoid")
+    humanoid.MaxHealth = math.huge
+end
+
+player.CharacterAdded:Connect(onCharacterAdded)
+
+local function onHit(hit)
+    if antiHit then
+        if hit ~= character.HumanoidRootPart then
+            for _, v in pairs(hit.Parent:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.Velocity = Vector3.new(0, 0, 0)
+                    v.RotVelocity = Vector3.new(0, 0, 0)
+                end
+            end
+        end
+    end
+end
+
+humanoid.Touched:Connect(onHit)
+
+-- Nút bật tắt anti hit
+TextButton.MouseButton1Click:Connect(function()
+    antiHit = not antiHit
+    if antiHit then
+        TextButton.Text = "Tắt"
+        AntiHitLabel.Text = "Trạng thái: Bật"
+    else
+        TextButton.Text = "Bật"
+        AntiHitLabel.Text = "Trạng thái: Tắt"
+    end
+    saveAntiHit()
+end)
+
+-- Nút ẩn hiện menu
+ToggleButton.MouseButton1Click:Connect(function()
+    if Frame.Visible then
+        Frame.Visible = false
+        ToggleButton.Text = "Hiện Menu"
+    else
+        Frame.Visible = true
+        ToggleButton.Text = "Ẩn Menu"
+    end
+end)
+
+-- Reset nhân vật
+game:GetService("Players").PlayerRemoving:Connect(function(plr)
+    if plr == player then
+        game:GetService("StarterGui"):SetCore("SaveAntiHit", nil)
+    end
+end)
+
+-- Load lại trạng thái khi reset nhân vật
+player.CharacterAdded:Connect(function()
+    loadAntiHit()
+end)
